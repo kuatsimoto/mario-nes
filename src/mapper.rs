@@ -7,17 +7,17 @@ pub struct Mapper {
     //mapper_state: usize,
 }
 impl Mapper {
-    fn new(mapper: usize) -> Self {
+    pub fn new(mapper: usize) -> Self {
         Self { mapper }
     }
-    fn cpu_read(&self, prg_rom: &[u8], prg_ram: &[u8], address: u16) -> u8 {
+   pub fn cpu_read(&self, prg_rom: &[u8], prg_ram: &[u8], address: u16) -> u8 {
         //This will eventually be a switch statement for all implemented mappers
         match self.mapper {
             0 => self.cpu_read_mapper_0(prg_rom, prg_ram, address),
             _ => 0,
         }
     }
-    fn cpu_write(&self, prg_ram: &mut [u8], address: u16, value: u8) {
+    pub fn cpu_write(&self, prg_ram: &mut [u8], address: u16, value: u8) {
         match self.mapper{
             0 => self.cpu_write_mapper_0(prg_ram, address, value),
             _ => (),
