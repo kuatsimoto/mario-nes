@@ -1,19 +1,16 @@
 use std::fs;
 
 //Define an enum for the Nametable option
-#[derive(Debug)]
 enum Nametable {
     Horizontal,
     Vertical,
 }
-#[derive(Debug)]
 #[allow(non_camel_case_types)]
 enum NESMode {
     iNES,
     NES2,
     iNESArch,
 }
-#[derive(Debug)]
 pub struct Cartridge {
     //Cartridge struct used to define all flags and parameters in NES ROM header.
     //This struct will also store the raw bytes of the header and the PRG/CHR ROM
@@ -64,7 +61,7 @@ impl Cartridge {
         let has_battery = (bytes[6] & 0x02) != 0; //second bit
         let trainer_flag = (bytes[6] & 0x04) != 0; //third bit
         let alt_nametable_flag = (bytes[6] & 0x08) != 0; //fourth bit
-        let lower_mapper_nybble = (bytes[6] & 0xF0) >> 4; //last byte
+        let lower_mapper_nybble = (bytes[6] & 0xF0) >> 4; //most significant byte
 
         //Flags 7
         let vs_unisystem = (bytes[7] & 0x01) != 0;
@@ -129,7 +126,7 @@ impl Cartridge {
 
         //Check if CHR data fits in ROM
         if chr_rom_banks == 0 {
-            chr_ram_data = vec![0; 8 * 1024]
+            chr_ram_data = vec![0; 8 * 1024];
         } else {
             if chr_offset + chr_size_bytes > bytes.len() {
                 return Err("ROM too small for CHR data");
@@ -186,4 +183,110 @@ pub fn load_rom() -> Result<Cartridge, &'static str> {
 
     let cartridge = Cartridge::load(&bytes)?;
     Ok(cartridge)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn create_test_rom(trainer_flag: bool, prg_rom_banks: usize, chr_rom: bool) -> Vec<u8> {
+        let header_bytes = vec![0x00; 16];
+        let prg_rom = vec![0x01; prg_rom_banks * 16 * 1024];
+        // let prg_ram = vec![0x02; 8 * 1024];
+
+        let mapper_bytes = match trainer_flag {
+            true => vec![0x04; 512],
+            false => vec![],
+        };
+
+        let chr_rom = match chr_rom {
+            true => vec![0x03; 8 * 1024],
+            false => vec![],
+        };
+
+        let rom = vec![header_bytes, mapper_bytes, prg_rom, chr_rom].concat();
+        rom
+    }
+
+    fn set_magic_header(mut bytes: Vec<u8>) -> Vec<u8> {
+        bytes[0..4].copy_from_slice(b"NES\x1A");
+        bytes
+    }
+
+    #[test]
+    fn small_rom_error() {
+        let mut rom_bytes = vec![0x00; 15];
+        rom_bytes = set_magic_header(rom_bytes);
+
+        let cartridge = Cartridge::load(&rom_bytes);
+
+        assert!(cartridge.is_err());
+    }
+
+    #[test]
+    fn invalid_magic_header() {
+        let rom_bytes = create_test_rom(false, 1, true);
+        let cartridge = Cartridge::load(&rom_bytes);
+
+        assert!(cartridge.is_err());
+    }
+
+    #[test]
+    fn validate_prg_nrom_128_size() {
+        let mut rom_bytes = create_test_rom(false, 1, true);
+        rom_bytes = set_magic_header(rom_bytes);
+        rom_bytes[4] = 0x01;
+
+        let cartridge = match Cartridge::load(&rom_bytes) {
+            Ok(cartridge) => cartridge,
+            Err(err) => panic!("{}", err),
+        };
+
+        assert_eq!(cartridge.prg_rom_banks, 1);
+        assert_eq!(cartridge.prg_size_bytes, 16 * 1024);
+    }
+
+    #[test]
+    fn validate_prg_nrom_256_size() {
+        let mut rom_bytes = create_test_rom(false, 2, true);
+        rom_bytes = set_magic_header(rom_bytes);
+        rom_bytes[4] = 0x02;
+
+        let cartridge = match Cartridge::load(&rom_bytes) {
+            Ok(cartridge) => cartridge,
+            Err(err) => panic!("{}", err),
+        };
+
+        assert_eq!(cartridge.prg_rom_banks, 2);
+        assert_eq!(cartridge.prg_size_bytes, 32 * 1024);
+    }
+
+    #[test]
+    fn validate_chr_size() {
+        //Set CHR banks to 1 and check ROM size is 8kiB and RAM is 0
+        let mut rom_bytes = create_test_rom(false, 1, true);
+        rom_bytes = set_magic_header(rom_bytes);
+        rom_bytes[5] = 0x01;
+
+        let cartridge = match Cartridge::load(&rom_bytes) {
+            Ok(cartridge) => cartridge,
+            Err(err) => panic!("{}", err),
+        };
+
+        assert_eq!(cartridge.chr_rom_banks, 1);
+        assert_eq!(cartridge.chr_size_bytes, 8 * 1024);
+        assert_eq!(cartridge.chr_ram_data, vec![]);
+
+        //Set CHR banks to 0 and check ROM size is 0 and RAM is 8kiB
+        rom_bytes[5] = 0;
+
+        let cartridge = match Cartridge::load(&rom_bytes) {
+            Ok(cartridge) => cartridge,
+            Err(err) => panic!("{}", err),
+        };
+
+        assert_eq!(cartridge.chr_rom_banks, 0);
+        assert_eq!(cartridge.chr_size_bytes, 0);
+        assert_eq!(cartridge.chr_ram_data, vec![0; 8 * 1024]);
+    }
 }
