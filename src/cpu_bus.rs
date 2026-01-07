@@ -4,7 +4,7 @@ pub struct CPUBus {
     prg_ram: Vec<u8>,
 }
 impl CPUBus {
-    fn cpu_read(&self, address: u16) -> u8 {
+   pub fn cpu_read(&self, address: u16) -> u8 {
         //Routes reads to appropriate memory component (Mapper, CPU mem)
         //Currently, only routes to mapper, all other addresses are ignored
 
@@ -14,7 +14,7 @@ impl CPUBus {
         }
     }
 
-    fn cpu_write(&mut self, address: u16, value: u8) {
+    pub fn cpu_write(&mut self, address: u16, value: u8) {
         //Routes writes to appropriate memory component (Mapper, CPU mem)
         //Currently only routes to mapper, all other addresses are ignored
 
