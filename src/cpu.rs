@@ -1,7 +1,9 @@
 //Define CPU struct
 mod opcode_lookup;
-use crate::cpu_bus::CPUBus;
-use std::{collections::HashMap, string};
+use crate::{
+    cpu::opcode_lookup::{AddressMode, Instruction},
+    cpu_bus::CPUBus,
+};
 
 #[allow(non_snake_case)]
 pub struct CPU<'a> {
@@ -81,10 +83,71 @@ impl<'a> CPU<'a> {
     }
 
     //Begin Opcode functionality.
-    pub fn fetch_byte(&mut self) -> u8 {
+    pub fn fetch_pc_byte(&mut self) -> u8 {
         let mem_byte = self.bus_read(self.PC);
         self.PC = self.PC.wrapping_add(1);
         mem_byte
+    }
+    fn address_mapper(
+        &mut self,
+        address_mode: AddressMode,
+        address: &u16,
+        instruction: &mut Instruction,
+    ) -> u8 {
+        //Need to add +cycles to this for page crossed and branches
+        //Probably need some instruction mapper for the implicit mode
+        //Relative mode requires a signed operand, cant use the address for this
+        
+        fn page_crossed (address: &u16, new_address: u16) -> bool {
+            //Check if page was crossed.
+            //Compare MSB from address and new_address. If MSB is changed, page was crossed
+            
+            let msb_address = address & 0xFF00;
+            let msb_new_address = new_address & 0xFF00;
+
+            msb_address != msb_new_address
+
+        }
+
+        match address_mode {
+            AddressMode::ZeroPageIndexedX => self.bus_read((address + self.X as u16) % 256),
+            AddressMode::ZeroPageIndexedY => self.bus_read((address + self.Y as u16) % 256),
+            AddressMode::AbsoluteIndexedX => {
+                let new_address = address + self.X as u16;
+                match page_crossed(address, new_address){
+                    true => instruction.cycles = 5,
+                    false => instruction.cycles = 4
+                };
+                self.bus_read(new_address)
+            },
+            AddressMode::AbsoluteIndexedY => {
+                let new_address = address + self.Y as u16;
+                match page_crossed(address, new_address){
+                    true => instruction.cycles = 5,
+                    false => instruction.cycles = 4
+                };
+                self.bus_read(new_address)
+            },
+            AddressMode::IndexedIndirectX => self.bus_read(
+                (address + self.X as u16) % 256 + ((address + self.X as u16 + 1) % 256) * 256
+            ),
+            AddressMode::IndexedIndirectY => {
+                let new_address = ((address + 1) % 256) * 256 + self.Y as u16;
+                match page_crossed(address, new_address){
+                    true => instruction.cycles = 5,
+                    false => instruction.cycles = 4
+                };
+                self.bus_read(new_address)
+            },
+            AddressMode::Accumulator => self.A,
+            AddressMode::Immediate => *address as u8,
+            AddressMode::ZeroPage => self.bus_read(address & 0x00FF),
+            AddressMode::Absolute => self.bus_read(*address),
+            // AddressMode::Relative => self.bus_read(self.PC + address), //Need to figure this out
+            // AddressMode::Indirect => //Need to figure this out,
+            // AddressMode::Implicit => 0x0000, //Need to figure this one out
+            _ => 0,
+        }
     }
     pub fn load_memory(&mut self, instruction: &opcode_lookup::Instruction) {
         //Will read from memory and load a register with the value
@@ -105,4 +168,3 @@ impl<'a> CPU<'a> {
 //     let operation = opcode_lookup.get(&0xA0u8);
 //     operation.unwrap().1(operation.unwrap().0)
 // }
-
