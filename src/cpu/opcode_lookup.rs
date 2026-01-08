@@ -33,13 +33,15 @@ pub struct Instruction {
     pub cycles: usize,
 }
 
-pub fn handler_dispatch(cpu: &mut CPU, instruction: &Instruction) {
+pub fn handler_dispatch(cpu: &mut CPU, instruction: &mut Instruction, operand: u16) -> Result<(), &'static str> {
     //Dispatch to correct handler
     //match statement (or something similar) by op
     match instruction.operation {
-        Operation::LDA | Operation::LDX | Operation::LDY => CPU::load_memory(cpu, instruction),
-        _ => (),
-    }
+        Operation::LDA | Operation::LDX | Operation::LDY => CPU::load_memory(cpu, instruction, operand),
+        _ => return Err("Invalid Operation"),
+    };
+
+    Ok(())
 }
 
 //NOTE: Cycles need to be either an enum or a hashmap.
@@ -196,5 +198,6 @@ pub static OPCODE_LOOKUP: Lazy<HashMap<u8, Instruction>> = Lazy::new(|| {
             cycles: 4,
         },
     );
+
     m
 });
