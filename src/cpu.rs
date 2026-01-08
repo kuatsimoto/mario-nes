@@ -5,14 +5,6 @@ use crate::{
     cpu_bus::CPUBus,
 };
 
-// struct AddressModeResult {
-//     value: u8,
-//     address: u16,
-//     rel_offset: i8,
-//     page_crossed: bool,
-//     accumulator: bool,
-// }
-
 enum AddressModeResult {
     Address { address: u16, page_crossed: bool },
     ZeroPage { address: u8 },
@@ -230,15 +222,4 @@ impl<'a> CPU<'a> {
     }
 }
 
-// fn test_func(x: u8) {
-//     println!("{x}")
-// }
-// fn test_hash() {
-//     type Operation = Box<dyn Fn(u8)>;
-//
-//     let mut opcode_lookup: HashMap<u8, (u8,Operation)> = HashMap::new();
-//     opcode_lookup.insert(0xA0u8, (0x01, Box::new(test_func)));
-//
-//     let operation = opcode_lookup.get(&0xA0u8);
-//     operation.unwrap().1(operation.unwrap().0)
-// }
+
