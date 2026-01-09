@@ -252,10 +252,18 @@ impl<B: CpuBus> CPU<B> {
             Err(e) => return Err(e),
         };
 
+        self.cycles_remaining = if page_crossed {
+            instruction.cycles + 1
+        } else {
+            instruction.cycles
+        };
+
         //Add values with wrapping add
-        //Need to detect carry bit
         //Need to make this a match statement for later instructions
         self.A = self.A.wrapping_add(value).wrapping_add(self.P & CPU::<B>::CARRY);
+        if value > self.A {
+            self.set_flag(Self::CARRY, true);
+        }
         Ok(())
     }
 }
@@ -514,13 +522,15 @@ mod tests {
         let mut bus = MockBus::new();
         let mut cpu = CPU::new(bus);
 
-        cpu.A = 0x0002;
+        cpu.A = 0xFF;
         let opcode = 0x69u8; //NICE
         let instruction = opcode_lookup::OPCODE_LOOKUP
             .get(&opcode)
             .expect("Invalid instruction");
-        cpu.arithmetic_operation(instruction, 0x0001)
+        cpu.arithmetic_operation(instruction, 0x0002)
             .expect("ADC operation failed");
-        assert_eq!(cpu.A, 0x0003);
+        assert_eq!(cpu.A, 0x01);
+        assert_ne!(cpu.P & CPU::<MockBus>::CARRY, 0);
+        assert_eq!(cpu.cycles_remaining, 2);
     }
 }
