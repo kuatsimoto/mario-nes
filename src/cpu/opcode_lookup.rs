@@ -7,6 +7,7 @@ pub enum Operation {
     LDA,
     LDY,
     LDX,
+    ADC,
     Other,
 }
 
@@ -37,8 +38,21 @@ pub fn handler_dispatch(cpu: &mut CPU<CPUBus>, instruction: &mut Instruction, op
     //Dispatch to correct handler
     //match statement (or something similar) by op
     match instruction.operation {
-        Operation::LDA | Operation::LDX | Operation::LDY => CPU::load_memory(cpu, instruction, operand),
-        _ => return Err("Invalid Operation"),
+        Operation::LDA | Operation::LDX | Operation::LDY => {
+            let result = CPU::load_memory(cpu, instruction, operand);
+            match result{
+                Ok(v) => Ok(v),
+                Err(e) => Err(e),
+            }
+        },
+        Operation::ADC =>{ 
+            let result = CPU::arithmetic_operation(cpu, instruction, operand);
+            match result{
+                Ok(v) => Ok(v),
+                Err(e) => Err(e),
+            }
+        },
+        _ => return Err("Invalid operation in handler dispatch"),
     };
 
     Ok(())
@@ -197,6 +211,70 @@ pub static OPCODE_LOOKUP: Lazy<HashMap<u8, Instruction>> = Lazy::new(|| {
             addressing: AddressMode::AbsoluteIndexedY,
             cycles: 4,
         },
+    );
+    m.insert(
+        0x69u8,//NICE
+        Instruction {
+            operation: Operation::ADC,
+            addressing: AddressMode::Immediate,
+            cycles: 2,
+        }
+    );
+    m.insert(
+        0x65u8,
+        Instruction{
+            operation: Operation::ADC,
+            addressing: AddressMode::ZeroPage,
+            cycles: 2,
+        }
+    );
+    m.insert(
+        0x75u8,
+        Instruction{
+            operation: Operation::ADC,
+            addressing: AddressMode::ZeroPageIndexedX,
+            cycles: 4,
+        }
+    );
+    m.insert(
+        0x6Du8,
+        Instruction{
+            operation: Operation::ADC,
+            addressing: AddressMode::Absolute,
+            cycles: 4,
+        }
+    );
+    m.insert(
+        0x7Du8,
+        Instruction{
+            operation: Operation::ADC,
+            addressing: AddressMode::AbsoluteIndexedX,
+            cycles: 4,
+        }
+    );
+    m.insert(
+        0x79u8,
+        Instruction{
+            operation: Operation::ADC,
+            addressing: AddressMode::AbsoluteIndexedY,
+            cycles: 4,
+        }
+    );
+    m.insert(
+        0x61u8,
+        Instruction{
+            operation: Operation::ADC,
+            addressing: AddressMode::IndexedIndirectX,
+            cycles: 6,
+        }
+    );
+    m.insert(
+        0x71u8,
+        Instruction{
+            operation: Operation::ADC,
+            addressing: AddressMode::IndexedIndirectY,
+            cycles: 5,
+        }
     );
 
     m
