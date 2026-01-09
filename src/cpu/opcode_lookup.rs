@@ -1,4 +1,4 @@
-use crate::cpu::CPU;
+use crate::{cpu::{CPU,CpuBus}, cpu_bus::CPUBus};
 use once_cell::sync::Lazy;
 use std::collections::HashMap;
 
@@ -33,7 +33,7 @@ pub struct Instruction {
     pub cycles: usize,
 }
 
-pub fn handler_dispatch(cpu: &mut CPU, instruction: &mut Instruction, operand: u16) -> Result<(), &'static str> {
+pub fn handler_dispatch(cpu: &mut CPU<CPUBus>, instruction: &mut Instruction, operand: u16) -> Result<(), &'static str> {
     //Dispatch to correct handler
     //match statement (or something similar) by op
     match instruction.operation {
