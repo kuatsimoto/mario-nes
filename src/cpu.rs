@@ -441,7 +441,7 @@ mod tests {
         let opcode = 0xBCu8;
         let instruction = opcode_lookup::OPCODE_LOOKUP.get(&opcode).expect("Invalid Instruction");
         cpu.load_memory(instruction, 0x00FF).expect("Failed to load memory");
-        assert_eq!(cpu.Y, 0xEB);address & 0xFF00 != base_address & 0xFF00
+        assert_eq!(cpu.Y, 0xEB);
         assert_eq!(cpu.cycles_remaining, 5);
     }
 }
