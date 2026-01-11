@@ -5,13 +5,13 @@ pub trait CpuBus {
     fn cpu_write(&mut self, addr: u16, value: u8);
 }
 
-pub struct CPUBus {
+pub struct NesBus {
     mapper: super::mapper::Mapper,
     prg_rom: Vec<u8>,
     prg_ram: Vec<u8>,
     ram: [u8; 0x800],
 }
-impl CpuBus for CPUBus {
+impl CpuBus for NesBus {
     fn cpu_read(&mut self, address: u16) -> u8 {
         //Routes reads to appropriate memory component (Mapper, CPU mem)
         //Currently, only routes to mapper, all other addresses are ignored
@@ -33,9 +33,9 @@ impl CpuBus for CPUBus {
         }
     }
 }
-impl CPUBus {
+impl NesBus {
     fn new(mapper: Mapper, prg_rom: Vec<u8>, prg_ram: Vec<u8>, ram: [u8; 0x800]) -> Self {
-        CPUBus {
+        NesBus {
             mapper,
             prg_rom,
             prg_ram,
@@ -49,13 +49,13 @@ mod tests {
     use super::*;
     use crate::mapper::Mapper;
 
-    fn new_test_bus(prg_rom_size: usize, mapper_number: usize, ram: [u8; 0x800]) -> CPUBus {
+    fn new_test_bus(prg_rom_size: usize, mapper_number: usize, ram: [u8; 0x800]) -> NesBus {
         let prg_rom = vec![0xEA; prg_rom_size];
         let prg_ram = vec![0x00; 8 * 1024];
 
         let mapper = Mapper::new(mapper_number);
 
-        CPUBus {
+        NesBus {
             mapper,
             prg_rom,
             prg_ram,

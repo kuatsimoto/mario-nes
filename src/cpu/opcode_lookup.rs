@@ -1,4 +1,4 @@
-use crate::{cpu::{CPU,CpuBus}, cpu_bus::CPUBus};
+use crate::{cpu::{CPU,CpuBus}, cpu_bus::NesBus};
 use once_cell::sync::Lazy;
 use std::collections::HashMap;
 
@@ -8,7 +8,14 @@ pub enum Operation {
     LDY,
     LDX,
     ADC,
-    Other,
+    SBC,
+    AND,
+    EOR,
+    ORA,
+    CLC,
+    CLD,
+    CLI,
+    CLV,
 }
 
 //AddressMode enum
@@ -34,7 +41,7 @@ pub struct Instruction {
     pub cycles: usize,
 }
 
-pub fn handler_dispatch(cpu: &mut CPU<CPUBus>, instruction: &mut Instruction, operand: u16) -> Result<(), &'static str> {
+pub fn handler_dispatch(cpu: &mut CPU<NesBus>, instruction: &mut Instruction, operand: u16) -> Result<(), &'static str> {
     //Dispatch to correct handler
     //match statement (or something similar) by op
     match instruction.operation {
@@ -45,17 +52,29 @@ pub fn handler_dispatch(cpu: &mut CPU<CPUBus>, instruction: &mut Instruction, op
                 Err(e) => Err(e),
             }
         },
-        Operation::ADC =>{ 
+        Operation::ADC | Operation::SBC => { 
             let result = CPU::arithmetic_operation(cpu, instruction, operand);
             match result{
                 Ok(v) => Ok(v),
                 Err(e) => Err(e),
             }
         },
-        _ => return Err("Invalid operation in handler dispatch"),
-    };
-
-    Ok(())
+        Operation::AND | Operation::EOR | Operation::ORA => {
+            let result = CPU::bitwise_logic(cpu, instruction, operand);
+            match result {
+                Ok(v) => Ok(v),
+                Err(e) => Err(e),
+            }
+        }
+        Operation::CLC | Operation::CLD | Operation::CLI | Operation::CLV => {
+            let result = CPU::bitwise_logic(cpu, instruction, operand);
+            match result {
+                Ok(v) => Ok(v),
+                Err(e) => Err(e),
+            }
+        }
+        // _ => Err("Invalid operation in handler dispatch"),
+    }
 }
 
 //NOTE: Cycles need to be either an enum or a hashmap.
@@ -276,6 +295,295 @@ pub static OPCODE_LOOKUP: Lazy<HashMap<u8, Instruction>> = Lazy::new(|| {
             cycles: 5,
         }
     );
+    m.insert(
+        0xE9u8,
+        Instruction{
+            operation: Operation::SBC,
+            addressing: AddressMode::Immediate,
+            cycles: 2,
+        }
+    );
+    m.insert(
+        0xE5u8,
+        Instruction{
+            operation: Operation::SBC,
+            addressing: AddressMode::ZeroPage,
+            cycles: 3,
+        }
+    );
+    m.insert(
+        0xF5u8,
+        Instruction{
+            operation: Operation::SBC,
+            addressing: AddressMode::ZeroPageIndexedX,
+            cycles: 4,
+        }
+    );
+    m.insert(
+        0xEDu8,
+        Instruction{
+            operation: Operation::SBC,
+            addressing: AddressMode::Absolute,
+            cycles: 4,
+        }
+    );
+    m.insert(
+        0xFDu8,
+        Instruction{
+            operation: Operation::SBC,
+            addressing: AddressMode::AbsoluteIndexedX,
+            cycles: 4,
+        }
+    );
+    m.insert(
+        0xF9u8,
+        Instruction{
+            operation: Operation::SBC,
+            addressing: AddressMode::AbsoluteIndexedY,
+            cycles: 4,
+        }
+    );
+    m.insert(
+        0xE1u8,
+        Instruction{
+            operation: Operation::SBC,
+            addressing: AddressMode::IndexedIndirectX,
+            cycles: 6,
+        }
+    );
+    m.insert(
+        0xF1u8,
+        Instruction{
+            operation: Operation::SBC,
+            addressing: AddressMode::IndexedIndirectY,
+            cycles: 5,
+        }
+    );
+    m.insert(
+        0x29u8,
+        Instruction{
+            operation: Operation::AND,
+            addressing: AddressMode::Immediate,
+            cycles: 2,
+        }
+    );
+    m.insert(
+        0x25u8,
+        Instruction{
+            operation: Operation::AND,
+            addressing: AddressMode::ZeroPage,
+            cycles: 3,
+        }
+    );
+    m.insert(
+        0x35u8,
+        Instruction{
+            operation: Operation::AND,
+            addressing: AddressMode::ZeroPageIndexedX,
+            cycles: 4,
+        }
+    );
+    m.insert(
+        0x2Du8,
+        Instruction{
+            operation: Operation::AND,
+            addressing: AddressMode::Absolute,
+            cycles: 4,
+        }
+    );
+    m.insert(
+        0x3Du8,
+        Instruction{
+            operation: Operation::AND,
+            addressing: AddressMode::AbsoluteIndexedX,
+            cycles: 4,
+        }
+    );
+    m.insert(
+        0x39u8,
+        Instruction{
+            operation: Operation::AND,
+            addressing: AddressMode::AbsoluteIndexedY,
+            cycles: 4,
+        }
+    );
+    m.insert(
+        0x21u8,
+        Instruction{
+            operation: Operation::AND,
+            addressing: AddressMode::IndexedIndirectX,
+            cycles: 6,
+        }
+    );
+    m.insert(
+        0x31u8,
+        Instruction{
+            operation: Operation::AND,
+            addressing: AddressMode::IndexedIndirectY,
+            cycles: 5,
+        }
+    );
+    m.insert(
+        0x49u8,
+        Instruction{
+            operation: Operation::EOR,
+            addressing: AddressMode::Immediate,
+            cycles: 2,
+        }
+    );
+    m.insert(
+        0x45u8,
+        Instruction{
+            operation: Operation::EOR,
+            addressing: AddressMode::ZeroPage,
+            cycles: 3,
+        }
+    );
+    m.insert(
+        0x55u8,
+        Instruction{
+            operation: Operation::EOR,
+            addressing: AddressMode::ZeroPageIndexedX,
+            cycles: 4,
+        }
+    );
+    m.insert(
+        0x4Du8,
+        Instruction{
+            operation: Operation::EOR,
+            addressing: AddressMode::Absolute,
+            cycles: 4,
+        }
+    );
+    m.insert(
+        0x5Du8,
+        Instruction{
+            operation: Operation::EOR,
+            addressing: AddressMode::AbsoluteIndexedX,
+            cycles: 4,
+        }
+    );
+    m.insert(
+        0x59u8,
+        Instruction{
+            operation: Operation::EOR,
+            addressing: AddressMode::AbsoluteIndexedY,
+            cycles: 4,
+        }
+    );
+    m.insert(
+        0x41u8,
+        Instruction{
+            operation: Operation::EOR,
+            addressing: AddressMode::IndexedIndirectX,
+            cycles: 6,
+        }
+    );
+    m.insert(
+        0x51u8,
+        Instruction{
+            operation: Operation::EOR,
+            addressing: AddressMode::IndexedIndirectY,
+            cycles: 5,
+        }
+    );
+    m.insert(
+        0x09u8,
+        Instruction{
+            operation: Operation::ORA,
+            addressing: AddressMode::Immediate,
+            cycles: 2,
+        }
+    );
+    m.insert(
+        0x05u8,
+        Instruction{
+            operation: Operation::ORA,
+            addressing: AddressMode::ZeroPage,
+            cycles: 3,
+        }
+    );
+    m.insert(
+        0x15u8,
+        Instruction{
+            operation: Operation::ORA,
+            addressing: AddressMode::ZeroPageIndexedX,
+            cycles: 4,
+        }
+    );
+    m.insert(
+        0x0Du8,
+        Instruction{
+            operation: Operation::ORA,
+            addressing: AddressMode::Absolute,
+            cycles: 4,
+        }
+    );
+    m.insert(
+        0x1Du8,
+        Instruction{
+            operation: Operation::ORA,
+            addressing: AddressMode::AbsoluteIndexedX,
+            cycles: 4,
+        }
+    );
+    m.insert(
+        0x19u8,
+        Instruction{
+            operation: Operation::ORA,
+            addressing: AddressMode::AbsoluteIndexedY,
+            cycles: 4,
+        }
+    );
+    m.insert(
+        0x01u8,
+        Instruction{
+            operation: Operation::ORA,
+            addressing: AddressMode::IndexedIndirectX,
+            cycles: 6,
+        }
+    );
+    m.insert(
+        0x11u8,
+        Instruction{
+            operation: Operation::ORA,
+            addressing: AddressMode::IndexedIndirectY,
+            cycles: 5,
+        }
+    );
+    m.insert(
+        0x18u8,
+        Instruction{
+            operation: Operation::CLC,
+            addressing: AddressMode::Implicit,
+            cycles: 2,
+        }
+    );
+    m.insert(
+        0xD8u8,
+        Instruction{
+            operation: Operation::CLD,
+            addressing: AddressMode::Implicit,
+            cycles: 2,
+        }
+    );
+    m.insert(
+        0x58u8,
+        Instruction{
+            operation: Operation::CLI,
+            addressing: AddressMode::Implicit,
+            cycles: 2,
+        }
+    );
+    m.insert(
+        0xB8u8,
+        Instruction{
+            operation: Operation::CLI,
+            addressing: AddressMode::Implicit,
+            cycles: 2,
+        }
+    );
+
 
     m
 });
