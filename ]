@@ -79,13 +79,6 @@ pub fn handler_dispatch(cpu: &mut CPU<NesBus>, instruction: &mut Instruction, op
                 Err(e) => Err(e),
             }
         }
-        Operation::STA | Operation::STX | Operation::STY => {
-            let result = CPU::store_memory(cpu, instruction, operand);
-            match result {
-                Ok(v) => Ok(v),
-                Err(e) => Err(e),
-            }
-        }
         // _ => Err("Invalid operation in handler dispatch"),
     }
 }
@@ -272,56 +265,40 @@ pub static OPCODE_LOOKUP: Lazy<HashMap<u8, Instruction>> = Lazy::new(|| {
         0x9Du8,
         Instruction {
             operation: Operation::STA,
-            addressing: AddressMode::AbsoluteIndexedX,
-            cycles: 5,
-        }
-    );
-    m.insert(
-        0x99u8,
-        Instruction {
-            operation: Operation::STA,
-            addressing: AddressMode::AbsoluteIndexedY,
-            cycles: 5,
-        }
-    );
-    m.insert(
-        0x81u8,
-        Instruction {
-            operation: Operation::STA,
-            addressing: AddressMode::IndexedIndirectX,
-            cycles: 6,
-        }
-    );
-    m.insert(
-        0x91u8,
-        Instruction {
-            operation: Operation::STA,
-            addressing: AddressMode::IndexedIndirectY,
+            addressing: AddressMode::ZeroPage,
             cycles: 2,
         }
     );
     m.insert(
-        0x86u8,
+        0x85u8,
         Instruction {
-            operation: Operation::STX,
+            operation: Operation::STA,
             addressing: AddressMode::ZeroPage,
-            cycles: 3,
+            cycles: 2,
         }
     );
     m.insert(
-        0x96u8,
+        0x85u8,
         Instruction {
-            operation: Operation::STX,
-            addressing: AddressMode::ZeroPageIndexedY,
-            cycles: 4,
+            operation: Operation::STA,
+            addressing: AddressMode::ZeroPage,
+            cycles: 2,
         }
     );
     m.insert(
-        0x8Eu8,
+        0x85u8,
         Instruction {
-            operation: Operation::STX,
-            addressing: AddressMode::Absolute,
-            cycles: 4,
+            operation: Operation::STA,
+            addressing: AddressMode::ZeroPage,
+            cycles: 2,
+        }
+    );
+    m.insert(
+        0x85u8,
+        Instruction {
+            operation: Operation::STA,
+            addressing: AddressMode::ZeroPage,
+            cycles: 2,
         }
     );
     m.insert(

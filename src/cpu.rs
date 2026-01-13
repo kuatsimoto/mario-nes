@@ -226,6 +226,34 @@ impl<B: CpuBus> CPU<B> {
         Ok(())
     }
 
+    pub fn store_memory(&mut self, instruction: &Instruction, operand: u16) -> Result<(), &'static str> {
+        let address_mode_result = match self.address_mapper(&instruction.addressing, &operand) {
+            AddressModeResult::ZeroPage { address } => {
+                Ok(address as u16)
+            }
+            AddressModeResult::Address { address, .. } => {
+                Ok(address)
+            }
+            _ => Err("Invalid address mode")
+        };
+
+        let address = match address_mode_result {
+            Ok(a) => a,
+            Err(e) => return Err(e)
+        };
+
+        match instruction.operation {
+            opcode_lookup::Operation::STA => self.bus_write(address, self.A),
+            opcode_lookup::Operation::STX => self.bus_write(address, self.X),
+            opcode_lookup::Operation::STY => self.bus_write(address, self.Y),
+            _ => return Err("Invalid operation")
+        };
+
+        Ok(())
+    }
+
+    
+
     pub fn arithmetic_operation(
         &mut self,
         instruction: &Instruction,
@@ -267,8 +295,9 @@ impl<B: CpuBus> CPU<B> {
 
                 match add {
                     true => self.set_flag(Self::CARRY, result > 0xFF),
-                    false => self.set_flag(Self::CARRY, (result as u8 & 0x80 != 0)),
+                    false => self.set_flag(Self::CARRY, result as u8 & 0x80 != 0),
                 }
+                //All flag logic is the same for subtraction
                 self.set_flag(Self::ZERO, result as u8 == 0);
                 //If first bit of value is different than 1st bit of result AND
                 //1st bit of A is different than 1st bit of result, overflow occurs
@@ -322,20 +351,20 @@ impl<B: CpuBus> CPU<B> {
                 let result = self.A & value;
                 self.set_flag(CPU::<B>::ZERO, result == 0);
                 self.set_flag(CPU::<B>::NEGATIVE, result & 0x80 != 0);
-                self.A = result
+                self.A = result;
             },
             opcode_lookup::Operation::EOR => {
                 let result = self.A ^ value;
                 self.set_flag(CPU::<B>::ZERO, result == 0);
                 self.set_flag(CPU::<B>::NEGATIVE, result & 0x80 != 0);
                 self.A = result
-            }
+            },
             opcode_lookup::Operation::ORA => {
                 let result = self.A | value;
                 self.set_flag(CPU::<B>::ZERO, result == 0);
                 self.set_flag(CPU::<B>::NEGATIVE, result & 0x80 != 0);
                 self.A = result
-            }
+            },
             _ => return Err("Invalid operation")
         };
 
@@ -343,12 +372,15 @@ impl<B: CpuBus> CPU<B> {
 
     }
 
-    pub fn clear_flag_operation(&mut self, instruction: &Instruction) -> Result<(), &'static str> {
+    pub fn set_flag_operation(&mut self, instruction: &Instruction) -> Result<(), &'static str> {
         match instruction.operation {
             Operation::CLC => self.set_flag(CPU::<B>::CARRY, false),
             Operation::CLD => self.set_flag(CPU::<B>::DECIMAL, false),
             Operation::CLI => self.set_flag(CPU::<B>::INTERRUPT, false),
             Operation::CLV => self.set_flag(CPU::<B>::OVERFLOW, false),
+            Operation::SEC => self.set_flag(CPU::<B>::CARRY, true),
+            Operation::SEI => self.set_flag(CPU::<B>::INTERRUPT, true),
+            Operation::SED => self.set_flag(CPU::<B>::DECIMAL, true),
             _ => return Err("Invalid operation")
         };
         

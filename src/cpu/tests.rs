@@ -503,6 +503,6 @@ fn test_clear_flag_operations() {
     cpu.set_flag(CPU::<MockBus>::CARRY, true);
     let opcode = 0x18u8;
     let instruction = opcode_lookup::OPCODE_LOOKUP.get(&opcode).expect("Invalid instruction");
-    cpu.clear_flag_operation(instruction).expect("CLC operatio failed");
+    cpu.set_flag_operation(instruction).expect("CLC operatio failed");
     assert!(!cpu.get_flag(CPU::<MockBus>::CARRY))
 }
