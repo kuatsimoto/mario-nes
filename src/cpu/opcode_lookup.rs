@@ -22,6 +22,14 @@ pub enum Operation {
     SEC,
     SED,
     SEI,
+    BCC,
+    BCS,
+    BEQ,
+    BMI,
+    BNE,
+    BPL,
+    BVC,
+    BVS,
 }
 
 //AddressMode enum
@@ -86,6 +94,14 @@ pub fn handler_dispatch(cpu: &mut CPU<NesBus>, instruction: &mut Instruction, op
                 Err(e) => Err(e),
             }
         }
+        Operation::BCC => {
+            let result = CPU::branch_operation(cpu, instruction, operand);
+            match result {
+                Ok(v) => Ok(v),
+                Err(e) => Err(e),
+            }
+        }
+        _ => Err("Invalid")
         // _ => Err("Invalid operation in handler dispatch"),
     }
 }
@@ -320,6 +336,30 @@ pub static OPCODE_LOOKUP: Lazy<HashMap<u8, Instruction>> = Lazy::new(|| {
         0x8Eu8,
         Instruction {
             operation: Operation::STX,
+            addressing: AddressMode::Absolute,
+            cycles: 4,
+        }
+    );
+    m.insert(
+        0x84u8,
+        Instruction {
+            operation: Operation::STY,
+            addressing: AddressMode::ZeroPage,
+            cycles: 3,
+        }
+    );
+    m.insert(
+        0x94u8,
+        Instruction {
+            operation: Operation::STY,
+            addressing: AddressMode::ZeroPageIndexedX,
+            cycles: 4,
+        }
+    );
+    m.insert(
+        0x8Cu8,
+        Instruction {
+            operation: Operation::STY,
             addressing: AddressMode::Absolute,
             cycles: 4,
         }
@@ -700,6 +740,71 @@ pub static OPCODE_LOOKUP: Lazy<HashMap<u8, Instruction>> = Lazy::new(|| {
             cycles: 2,
         }
     );
+    m.insert(
+        0x90u8,
+        Instruction{
+            operation: Operation::BCC,
+            addressing: AddressMode::Relative,
+            cycles: 2,
+        }
+    );
+    m.insert(
+        0xB0u8,
+        Instruction{
+            operation: Operation::BCS,
+            addressing: AddressMode::Relative,
+            cycles: 2,
+        }
+    );
+    m.insert(
+        0xF0u8,
+        Instruction{
+            operation: Operation::BEQ,
+            addressing: AddressMode::Relative,
+            cycles: 2,
+        }
+    );
+    m.insert(
+        0x30u8,
+        Instruction{
+            operation: Operation::BMI,
+            addressing: AddressMode::Relative,
+            cycles: 2,
+        }
+    );
+    m.insert(
+        0xD0u8,
+        Instruction{
+            operation: Operation::BNE,
+            addressing: AddressMode::Relative,
+            cycles: 2,
+        }
+    );
+    m.insert(
+        0x10u8,
+        Instruction{
+            operation: Operation::BPL,
+            addressing: AddressMode::Relative,
+            cycles: 2,
+        }
+    );
+    m.insert(
+        0x50u8,
+        Instruction{
+            operation: Operation::BVC,
+            addressing: AddressMode::Relative,
+            cycles: 2,
+        }
+    );
+    m.insert(
+        0x70u8,
+        Instruction{
+            operation: Operation::BVS,
+            addressing: AddressMode::Relative,
+            cycles: 2,
+        }
+    );
+
 
 
 

@@ -148,8 +148,8 @@ impl<B: CpuBus> CPU<B> {
             AddressMode::IndexedIndirectX => {
                 let address = self.bus_read(((*operand as u8).wrapping_add(self.X)) as u16) as u16
                     + self.bus_read((*operand as u8).wrapping_add(self.X).wrapping_add(1) as u16)
-                        as u16
-                        * 256;
+                    as u16
+                    * 256;
                 AddressModeResult::Address {
                     address: address,
                     page_crossed: false,
@@ -176,7 +176,7 @@ impl<B: CpuBus> CPU<B> {
                 address: *operand,
                 page_crossed: false,
             },
-            // AddressMode::Relative => self.bus_read(self.PC + address), //Need to figure this out
+            AddressMode::Relative => AddressModeResult::Relative{offset: *operand as i8}, 
             // AddressMode::Indirect => //Need to figure this out,
             _ => AddressModeResult::Immediate { value: 0x00 }, //Will be changed later for correct error
                                                                //handling
@@ -252,7 +252,7 @@ impl<B: CpuBus> CPU<B> {
         Ok(())
     }
 
-    
+
 
     pub fn arithmetic_operation(
         &mut self,
@@ -288,21 +288,21 @@ impl<B: CpuBus> CPU<B> {
         };
 
         let mut add_with_carry = | value: u8, add: bool| {
-                let prev_reg_a = self.A;
-                let carry = if self.get_flag(Self::CARRY) {1} else {0};
-                let result = self.A as u16 + value as u16 + carry as u16; //Calc as u16 for carry
-                self.A = result as u8;
+            let prev_reg_a = self.A;
+            let carry = if self.get_flag(Self::CARRY) {1} else {0};
+            let result = self.A as u16 + value as u16 + carry as u16; //Calc as u16 for carry
+            self.A = result as u8;
 
-                match add {
-                    true => self.set_flag(Self::CARRY, result > 0xFF),
-                    false => self.set_flag(Self::CARRY, result as u8 & 0x80 != 0),
-                }
-                //All flag logic is the same for subtraction
-                self.set_flag(Self::ZERO, result as u8 == 0);
-                //If first bit of value is different than 1st bit of result AND
-                //1st bit of A is different than 1st bit of result, overflow occurs
-                self.set_flag(Self::OVERFLOW, ((value ^ result as u8) & (prev_reg_a ^ result as u8)) & 0x80 !=0);
-                self.set_flag(Self::NEGATIVE, result as u8 & 0x80 != 0);
+            match add {
+                true => self.set_flag(Self::CARRY, result > 0xFF),
+                false => self.set_flag(Self::CARRY, result as u8 & 0x80 != 0),
+            }
+            //All flag logic is the same for subtraction
+            self.set_flag(Self::ZERO, result as u8 == 0);
+            //If first bit of value is different than 1st bit of result AND
+            //1st bit of A is different than 1st bit of result, overflow occurs
+            self.set_flag(Self::OVERFLOW, ((value ^ result as u8) & (prev_reg_a ^ result as u8)) & 0x80 !=0);
+            self.set_flag(Self::NEGATIVE, result as u8 & 0x80 != 0);
         };
 
         match instruction.operation {
@@ -383,7 +383,77 @@ impl<B: CpuBus> CPU<B> {
             Operation::SED => self.set_flag(CPU::<B>::DECIMAL, true),
             _ => return Err("Invalid operation")
         };
+
+        Ok(())
+    }
+    fn take_branch(&mut self, offset: i8, instruction: &Instruction) {
+        let new_pc = (self.PC as i16 + offset as i16) as u16;
+        self.cycles_remaining = if new_pc & 0xFF00 != self.PC & 0xFF00 {
+            instruction.cycles + 2
+        } else {
+            instruction.cycles + 1
+        };
+
+        self.PC = new_pc; 
+    }
+
+    pub fn branch_operation(&mut self, instruction: &Instruction, operand: u16) -> Result<(), &'static str> {
+        let address_mode_result = match self.address_mapper(&instruction.addressing, &operand) {
+            AddressModeResult::Relative{offset} => Ok(offset),
+            _ => Err("Invalid address mode")
+        };        
         
+        let offset = match address_mode_result {
+            Ok(o) => o,
+            Err(e) => return Err(e),
+        };
+
+        self.cycles_remaining = instruction.cycles;
+        
+        match instruction.operation {
+            Operation::BCC => {
+                if !self.get_flag(CPU::<B>::CARRY) {
+                    self.take_branch(offset, &instruction)
+                }
+            },
+            Operation::BCS => {
+                if self.get_flag(CPU::<B>::CARRY){
+                    self.take_branch(offset, &instruction);
+                }
+            }
+            Operation::BEQ => {
+                if self.get_flag(CPU::<B>::ZERO){
+                    self.take_branch(offset, &instruction);
+                }
+            }
+            Operation::BMI => {
+                if self.get_flag(CPU::<B>::NEGATIVE){
+                    self.take_branch(offset, &instruction);
+                }
+            }
+            Operation::BNE => {
+                if !self.get_flag(CPU::<B>::ZERO){
+                    self.take_branch(offset, &instruction);
+                }
+            }
+            Operation::BPL => {
+                if !self.get_flag(CPU::<B>::NEGATIVE){
+                    self.take_branch(offset, &instruction);
+                }
+            }
+            Operation::BVC => {
+                if !self.get_flag(CPU::<B>::OVERFLOW){
+                    self.take_branch(offset, &instruction);
+                }
+            }
+            Operation::BVS => {
+                if self.get_flag(CPU::<B>::OVERFLOW){
+                    self.take_branch(offset, &instruction);
+                }
+            }
+            _ => return Err("Invalid operation")
+        };
+
         Ok(())
     }
 }
