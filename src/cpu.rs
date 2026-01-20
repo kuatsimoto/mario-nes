@@ -456,5 +456,23 @@ impl<B: CpuBus> CPU<B> {
 
         Ok(())
     }
+
+    pub fn transfer_operations(&mut self, instruction: &Instruction) -> Result<(), &'static str>{
+        
+        self.cycles_remaining = instruction.cycles;
+
+        match instruction.operation {
+            Operation::TAX =>  self.X = self.A,
+            Operation::TAY => self.Y = self.A,
+            Operation::TSX => self.X = self.SP,
+            Operation::TXA => self.A = self.X,
+            Operation::TXS => self.SP = self.X,
+            Operation::TYA => self.A = self.Y,
+            _ => return Err("Invalid operation"),
+        };
+
+        Ok(())
+
+    }
 }
 

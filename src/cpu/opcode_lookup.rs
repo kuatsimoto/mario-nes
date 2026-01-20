@@ -30,6 +30,12 @@ pub enum Operation {
     BPL,
     BVC,
     BVS,
+    TAX,
+    TAY,
+    TSX,
+    TXA,
+    TXS,
+    TYA,
 }
 
 //AddressMode enum
@@ -94,8 +100,15 @@ pub fn handler_dispatch(cpu: &mut CPU<NesBus>, instruction: &mut Instruction, op
                 Err(e) => Err(e),
             }
         }
-        Operation::BCC => {
+        Operation::BCC | Operation::BCS | Operation::BEQ | Operation::BNE | Operation::BPL | Operation::BVC | Operation::BVS => {
             let result = CPU::branch_operation(cpu, instruction, operand);
+            match result {
+                Ok(v) => Ok(v),
+                Err(e) => Err(e),
+            }
+        }
+        Operation::TAX | Operation::TAY | Operation::TXA | Operation::TYA | Operation::TSX | Operation::TXS => {
+            let result = CPU::transfer_operations(cpu, instruction);
             match result {
                 Ok(v) => Ok(v),
                 Err(e) => Err(e),
@@ -801,6 +814,54 @@ pub static OPCODE_LOOKUP: Lazy<HashMap<u8, Instruction>> = Lazy::new(|| {
         Instruction{
             operation: Operation::BVS,
             addressing: AddressMode::Relative,
+            cycles: 2,
+        }
+    );
+    m.insert(
+        0xAAu8,
+        Instruction{
+            operation: Operation::TAX,
+            addressing: AddressMode::Implicit,
+            cycles: 2,
+        }
+    );
+    m.insert(
+        0xA8u8,
+        Instruction{
+            operation: Operation::TAY,
+            addressing: AddressMode::Implicit,
+            cycles: 2,
+        }
+    );
+    m.insert(
+        0xBAu8,
+        Instruction{
+            operation: Operation::TSX,
+            addressing: AddressMode::Implicit,
+            cycles: 2,
+        }
+    );
+    m.insert(
+        0x8Au8,
+        Instruction{
+            operation: Operation::TXA,
+            addressing: AddressMode::Implicit,
+            cycles: 2,
+        }
+    );
+    m.insert(
+        0x9Au8,
+        Instruction{
+            operation: Operation::TXS,
+            addressing: AddressMode::Implicit,
+            cycles: 2,
+        }
+    );
+    m.insert(
+        0x98u8,
+        Instruction{
+            operation: Operation::TYA,
+            addressing: AddressMode::Implicit,
             cycles: 2,
         }
     );
