@@ -36,6 +36,9 @@ pub enum Operation {
     TXA,
     TXS,
     TYA,
+    JMP,
+    JSR,
+    RTS,
 }
 
 //AddressMode enum
@@ -865,7 +868,38 @@ pub static OPCODE_LOOKUP: Lazy<HashMap<u8, Instruction>> = Lazy::new(|| {
             cycles: 2,
         }
     );
-
+    m.insert(
+        0x4Cu8,
+        Instruction{
+            operation: Operation::JMP,
+            addressing: AddressMode::Absolute,
+            cycles: 3,
+        }
+    );
+    m.insert(
+        0x6Cu8,
+        Instruction{
+            operation: Operation::JMP,
+            addressing: AddressMode::Indirect,
+            cycles: 5,
+        }
+    );
+    m.insert(
+        0x20u8,
+        Instruction{
+            operation: Operation::JSR,
+            addressing: AddressMode::Absolute,
+            cycles: 6,
+        }
+    );
+    m.insert(
+        0x69u8,
+        Instruction{
+            operation: Operation::RTS,
+            addressing: AddressMode::Implicit,
+            cycles: 6,
+        }
+    );
 
 
 

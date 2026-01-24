@@ -8,12 +8,20 @@ use crate::{
     cpu_bus::CpuBus,
 };
 
+enum WrapMode {
+    JmpIndirect,
+    Normal,
+}
+
 enum AddressModeResult {
     Address { address: u16, page_crossed: bool },
     ZeroPage { address: u8 },
     Immediate { value: u8 },
     Accumulator,
     Relative { offset: i8 },
+    Indirect { pointer: u16 },
+    Implicit,
+    Default,
 }
 
 #[allow(non_snake_case)]
@@ -74,12 +82,32 @@ impl<B: CpuBus> CPU<B> {
     fn bus_write(&mut self, address: u16, value: u8) {
         self.cpu_bus.cpu_write(address, value);
     }
-    fn read_u16(&mut self, address: u16) -> u16 {
+    fn read_u16(&mut self, address: u16, wrap_mode: WrapMode) -> u16 {
         //Read from two addresses and return a u16 as a combination of upper and lower bytes
-        let upper_byte = self.bus_read(address.wrapping_add(1)) as u16;
         let lower_byte = self.bus_read(address) as u16;
+        let upper_byte = match wrap_mode {
+            WrapMode::JmpIndirect => {
+               if address & 0x00FF == 0x00FF {
+                   self.bus_read(address & 0xFF00) as u16
+               } else {
+                   self.bus_read(address.wrapping_add(1)) as u16
+               }
+            },
+            _ => self.bus_read(address.wrapping_add(1)) as u16,
+        };
 
         (upper_byte << 8) | lower_byte
+    }
+    fn push_to_stack(&mut self, value: u8) {
+        let stack_address = self.SP as u16 + 0x0100;
+        self.bus_write(stack_address, value);
+        self.SP = self.SP.wrapping_sub(1);
+    }
+    fn pull_from_stack(&mut self) -> u8 {
+        self.SP = self.SP.wrapping_add(1);
+        let stack_address = self.SP as u16 + 0x0100;
+        let value = self.bus_read(stack_address);
+        value
     }
     //Reset function. Resets registers and gets PC from cartridge PRG ROM
     pub fn reset(&mut self) {
@@ -87,7 +115,7 @@ impl<B: CpuBus> CPU<B> {
         self.X = 0x00;
         self.Y = 0x00;
         self.SP = 0xFD;
-        self.PC = self.read_u16(0xFFFC);
+        self.PC = self.read_u16(0xFFFC, WrapMode::Normal);
         self.P = 0x24;
         self.cycles_remaining = 7;
         self.halted = false;
@@ -177,7 +205,8 @@ impl<B: CpuBus> CPU<B> {
                 page_crossed: false,
             },
             AddressMode::Relative => AddressModeResult::Relative{offset: *operand as i8}, 
-            // AddressMode::Indirect => //Need to figure this out,
+            AddressMode::Indirect => AddressModeResult::Indirect{pointer: *operand},
+            AddressMode::Implicit => AddressModeResult::Implicit,
             _ => AddressModeResult::Immediate { value: 0x00 }, //Will be changed later for correct error
                                                                //handling
         }
@@ -473,6 +502,49 @@ impl<B: CpuBus> CPU<B> {
 
         Ok(())
 
+    }
+    
+    pub fn jump_operations(&mut self, instruction: &Instruction, operand: u16) -> Result<(), &'static str>{
+        
+        let address_mode_result = match self.address_mapper(&instruction.addressing, &operand) {
+            AddressModeResult::Address{address, ..} => {
+                Ok(address)
+            }, 
+            AddressModeResult::Indirect{pointer} => {
+                let address = self.read_u16(pointer, WrapMode::JmpIndirect);
+                Ok(address)
+            },
+            AddressModeResult::Implicit => {
+                Ok(0)
+            }
+            _ => Err("Invalid address mode")
+        };
+
+        let address = match address_mode_result {
+            Ok(v) => v,
+            Err(e) => return Err(e)
+        };
+
+        self.cycles_remaining = instruction.cycles;
+
+        match instruction.operation {
+            Operation::JMP => {
+                self.PC = address;
+            }
+            Operation::JSR => {
+                self.push_to_stack(((self.PC.wrapping_sub(1) & 0xFF00) >> 8) as u8);
+                self.push_to_stack(self.PC.wrapping_sub(1) as u8);
+                self.PC = address;
+           },
+           Operation::RTS => {
+               let pc_low = self.pull_from_stack();
+               let pc_high = self.pull_from_stack();
+               self.PC = ((pc_high as u16) << 8 | pc_low as u16).wrapping_add(1);
+           },
+            _ => return Err("Invalid operation")
+        }
+
+        Ok(())
     }
 }
 
