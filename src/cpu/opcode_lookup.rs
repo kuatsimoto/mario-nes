@@ -39,6 +39,7 @@ pub enum Operation {
     JMP,
     JSR,
     RTS,
+    BRK,
 }
 
 //AddressMode enum
@@ -112,6 +113,13 @@ pub fn handler_dispatch(cpu: &mut CPU<NesBus>, instruction: &mut Instruction, op
         }
         Operation::TAX | Operation::TAY | Operation::TXA | Operation::TYA | Operation::TSX | Operation::TXS => {
             let result = CPU::transfer_operations(cpu, instruction);
+            match result {
+                Ok(v) => Ok(v),
+                Err(e) => Err(e),
+            }
+        }
+        Operation::JMP | Operation::JSR | Operation::RTS | Operation::BRK => {
+            let result = CPU::jump_operations(cpu, instruction, operand);
             match result {
                 Ok(v) => Ok(v),
                 Err(e) => Err(e),
@@ -898,6 +906,14 @@ pub static OPCODE_LOOKUP: Lazy<HashMap<u8, Instruction>> = Lazy::new(|| {
             operation: Operation::RTS,
             addressing: AddressMode::Implicit,
             cycles: 6,
+        }
+    );
+    m.insert(
+        0x00u8,
+        Instruction{
+            operation: Operation::BRK,
+            addressing: AddressMode::Implicit,
+            cycles: 7,
         }
     );
 

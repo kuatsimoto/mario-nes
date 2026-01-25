@@ -541,6 +541,14 @@ impl<B: CpuBus> CPU<B> {
                let pc_high = self.pull_from_stack();
                self.PC = ((pc_high as u16) << 8 | pc_low as u16).wrapping_add(1);
            },
+           Operation::BRK => {
+                self.push_to_stack(((self.PC & 0xFF00) >> 8) as u8);
+                self.push_to_stack(self.PC as u8);
+
+                self.push_to_stack(self.P | CPU::<B>::BREAK | CPU::<B>::UNUSED);
+                self.set_flag(CPU::<B>::INTERRUPT, true);
+                self.PC = self.read_u16(0xFFFE, WrapMode::Normal)
+           }
             _ => return Err("Invalid operation")
         }
 
