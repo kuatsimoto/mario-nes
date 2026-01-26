@@ -600,119 +600,13 @@ impl<B: CpuBus> CPU<B> {
 
         match instruction.operation {
             Operation::ASL => {
-                let value = match accumulator {
+                let mut value = match accumulator {
                     true => self.A,
                     false => self.bus_read(address)
                 };
-                
-                let result = (value as u16) << 1;
-                self.set_flag(CPU::<B>::CARRY, result & 0x100 != 0);
-                self.set_flag(CPU::<B>::ZERO, result == 0);
-                self.set_flag(CPU::<B>::NEGATIVE, result & 0x80 != 0);
 
-                match accumulator {
-                    true => self.A = result as u8,
-                    false => self.bus_write(address, result as u8),
-                }
-            }
-            Operation::LSR => {
-                let value = match accumulator {
-                    true => self.A,
-                    false => self.bus_read(address),
-                };
-
-                self.set_flag(CPU::<B>::CARRY, value & 0x01 != 0);
-                let result = value >> 1;
-
-                self.set_flag(CPU::<B>::ZERO, result == 0);
-                self.set_flag(CPU::<B>::NEGATIVE, false);
-
-                match accumulator {
-                    true => self.A = result,
-                    false => self.bus_write(address, result),
-                }
-            }
-            Operation::ROL => {
-                let value = match accumulator {
-                    true => self.A,
-                    false => self.bus_read(address),
-                };
-
-                let carry_in = self.get_flag(CPU::<B>::CARRY);
-
-                let result = value << 1 | carry_in as u8;
-                self.set_flag(CPU::<B>::CARRY, value & 0x80 != 0);
-                self.set_flag(CPU::<B>::ZERO, result == 0);
-                self.set_flag(CPU::<B>::NEGATIVE, result & 0x80 != 0);
-
-                match accumulator {
-                    true => self.A = result,
-                    false => self.bus_write(address, result),
-                };
-            }
-            Operation::ROR => {
-                let value = match accumulator {
-                    true => self.A,
-                    false => self.bus_read(address),
-                };
-
-                let carry_in = self.get_flag(CPU::<B>::CARRY);
-
-                let result = value >> 1 | (carry_in as u8) << 7;
-                self.set_flag(CPU::<B>::CARRY, value & 0x01 != 0);
-                self.set_flag(CPU::<B>::ZERO, result == 0);
-                self.set_flag(CPU::<B>::NEGATIVE, result & 0x80 != 0);
-
-                match accumulator {
-                    true => self.A = result,
-                    false => self.bus_write(address, result),
-                }
-            }
-            _ => {
-                return Err("Invalid operation")
             }
         }
-
-        Ok(())
-    }
-
-    pub fn compare_operations(&mut self, instruction: &Instruction, operand: u16) -> Result<(), &'static str> {
-        let address_mode_result = match self.address_mapper(&instruction.addressing, &operand) {
-            AddressModeResult::Address { address, page_crossed } => {
-                let value = self.bus_read(address);
-                Ok((value, page_crossed))
-            },
-            AddressModeResult::ZeroPage { address } => {
-                let value = self.bus_read(address as u16);
-                Ok((value, false))
-            },
-            AddressModeResult::Immediate { value } => {
-                Ok((value, false))
-            }
-            _ => Err("Invalid address mode")
-        };
-
-        let (value, page_crossed) = match address_mode_result {
-            Ok((v,p)) => (v,p),
-            Err(e) => return Err(e),
-        };
-
-        self.cycles_remaining = match page_crossed {
-            true => instruction.cycles + 1,
-            false => instruction.cycles,
-        };
-
-        let register = match instruction.operation {
-            Operation::CMP => self.A,
-            Operation::CPX => self.X,
-            Operation::CPY => self.Y,
-            _ => return Err("Invalid operation")
-        };
-
-        let result = register.wrapping_sub(value);
-        self.set_flag(CPU::<B>::CARRY, register >= value);
-        self.set_flag(CPU::<B>::ZERO, register == value);
-        self.set_flag(CPU::<B>::NEGATIVE, result & 0x80 !=0);
 
         Ok(())
     }

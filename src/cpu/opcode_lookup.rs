@@ -40,6 +40,14 @@ pub enum Operation {
     JSR,
     RTS,
     BRK,
+    RTI,
+    ASL,
+    LSR,
+    ROL,
+    ROR,
+    CMP,
+    CPX,
+    CPY,
 }
 
 //AddressMode enum
@@ -118,14 +126,28 @@ pub fn handler_dispatch(cpu: &mut CPU<NesBus>, instruction: &mut Instruction, op
                 Err(e) => Err(e),
             }
         }
-        Operation::JMP | Operation::JSR | Operation::RTS | Operation::BRK => {
+        Operation::JMP | Operation::JSR | Operation::RTS | Operation::BRK | Operation::RTI => {
             let result = CPU::jump_operations(cpu, instruction, operand);
             match result {
                 Ok(v) => Ok(v),
                 Err(e) => Err(e),
             }
         }
-        _ => Err("Invalid")
+        Operation::ASL | Operation::LSR | Operation::ROR | Operation:: ROL => {
+            let result = CPU::shift_operations(cpu, instruction, operand);
+            match result {
+                Ok(v) => Ok(v),
+                Err(e) => Err(e),
+            }
+        }
+        Operation::CMP | Operation::CPX | Operation::CPY => {
+            let result = CPU::compare_operations(cpu, instruction, operand);
+            match result {
+                Ok(v) => Ok(v),
+                Err(e) => Err(e),
+            }
+        }
+        _ => Err("Invalid operation dispatch attempted")
         // _ => Err("Invalid operation in handler dispatch"),
     }
 }
@@ -914,6 +936,286 @@ pub static OPCODE_LOOKUP: Lazy<HashMap<u8, Instruction>> = Lazy::new(|| {
             operation: Operation::BRK,
             addressing: AddressMode::Implicit,
             cycles: 7,
+        }
+    );
+    m.insert(
+        0x40u8,
+        Instruction{
+            operation: Operation::RTI,
+            addressing: AddressMode::Implicit,
+            cycles: 6,
+        }
+    );
+    m.insert(
+        0x0Au8,
+        Instruction{
+            operation: Operation::ASL,
+            addressing: AddressMode::Accumulator,
+            cycles: 2,
+        }
+    );
+    m.insert(
+        0x06u8,
+        Instruction{
+            operation: Operation::ASL,
+            addressing: AddressMode::ZeroPage,
+            cycles: 5,
+        }
+    );
+    m.insert(
+        0x16u8,
+        Instruction{
+            operation: Operation::ASL,
+            addressing: AddressMode::ZeroPageIndexedX,
+            cycles: 6,
+        }
+    );
+    m.insert(
+        0x0Eu8,
+        Instruction{
+            operation: Operation::ASL,
+            addressing: AddressMode::Absolute,
+            cycles: 6,
+        }
+    );
+    m.insert(
+        0x1Eu8,
+        Instruction{
+            operation: Operation::ASL,
+            addressing: AddressMode::AbsoluteIndexedX,
+            cycles: 7,
+        }
+    );
+    m.insert(
+        0x4Au8,
+        Instruction{
+            operation: Operation::LSR,
+            addressing: AddressMode::Accumulator,
+            cycles: 2,
+        }
+    );
+    m.insert(
+        0x46u8,
+        Instruction{
+            operation: Operation::LSR,
+            addressing: AddressMode::ZeroPage,
+            cycles: 5,
+        }
+    );
+    m.insert(
+        0x56u8,
+        Instruction{
+            operation: Operation::LSR,
+            addressing: AddressMode::ZeroPageIndexedX,
+            cycles: 6,
+        }
+    );
+    m.insert(
+        0x4Eu8,
+        Instruction{
+            operation: Operation::LSR,
+            addressing: AddressMode::Absolute,
+            cycles: 6,
+        }
+    );
+    m.insert(
+        0x5Eu8,
+        Instruction{
+            operation: Operation::LSR,
+            addressing: AddressMode::AbsoluteIndexedX,
+            cycles: 7,
+        }
+    );
+    m.insert(
+        0x2Au8,
+        Instruction{
+            operation: Operation::ROL,
+            addressing: AddressMode::Accumulator,
+            cycles: 2,
+        }
+    );
+    m.insert(
+        0x26u8,
+        Instruction{
+            operation: Operation::ROL,
+            addressing: AddressMode::ZeroPage,
+            cycles: 5,
+        }
+    );
+    m.insert(
+        0x36u8,
+        Instruction{
+            operation: Operation::ROL,
+            addressing: AddressMode::ZeroPageIndexedX,
+            cycles: 6,
+        }
+    );
+    m.insert(
+        0x2Eu8,
+        Instruction{
+            operation: Operation::ROL,
+            addressing: AddressMode::Absolute,
+            cycles: 6,
+        }
+    );
+    m.insert(
+        0x3Eu8,
+        Instruction{
+            operation: Operation::ROL,
+            addressing: AddressMode::AbsoluteIndexedX,
+            cycles: 7,
+        }
+    );
+    m.insert(
+        0x6Au8,
+        Instruction{
+            operation: Operation::ROR,
+            addressing: AddressMode::Accumulator,
+            cycles: 2,
+        }
+    );
+    m.insert(
+        0x66u8,
+        Instruction{
+            operation: Operation::ROR,
+            addressing: AddressMode::ZeroPage,
+            cycles: 5,
+        }
+    );
+    m.insert(
+        0x76u8,
+        Instruction{
+            operation: Operation::ROR,
+            addressing: AddressMode::ZeroPageIndexedX,
+            cycles: 6,
+        }
+    );
+    m.insert(
+        0x6Eu8,
+        Instruction{
+            operation: Operation::ROR,
+            addressing: AddressMode::Absolute,
+            cycles: 6,
+        }
+    );
+    m.insert(
+        0x7Eu8,
+        Instruction{
+            operation: Operation::ROR,
+            addressing: AddressMode::AbsoluteIndexedX,
+            cycles: 7,
+        }
+    );
+    m.insert(
+        0xC9u8,
+        Instruction{
+            operation: Operation::CMP,
+            addressing: AddressMode::Immediate,
+            cycles: 2,
+        }
+    );
+    m.insert(
+        0xC5u8,
+        Instruction{
+            operation: Operation::CMP,
+            addressing: AddressMode::ZeroPage,
+            cycles: 3,
+        }
+    );
+    m.insert(
+        0xD5u8,
+        Instruction{
+            operation: Operation::CMP,
+            addressing: AddressMode::ZeroPageIndexedX,
+            cycles: 4,
+        }
+    );
+    m.insert(
+        0xCDu8,
+        Instruction{
+            operation: Operation::CMP,
+            addressing: AddressMode::Absolute,
+            cycles: 4,
+        }
+    );
+    m.insert(
+        0xDDu8,
+        Instruction{
+            operation: Operation::CMP,
+            addressing: AddressMode::AbsoluteIndexedX,
+            cycles: 4,
+        }
+    );
+    m.insert(
+        0xD9u8,
+        Instruction{
+            operation: Operation::CMP,
+            addressing: AddressMode::AbsoluteIndexedY,
+            cycles: 4,
+        }
+    );
+    m.insert(
+        0xC1u8,
+        Instruction{
+            operation: Operation::CMP,
+            addressing: AddressMode::IndexedIndirectX,
+            cycles: 6,
+        }
+    );
+    m.insert(
+        0xD1u8,
+        Instruction{
+            operation: Operation::CMP,
+            addressing: AddressMode::IndexedIndirectY,
+            cycles: 5,
+        }
+    );
+    m.insert(
+        0xE0u8,
+        Instruction{
+            operation: Operation::CPX,
+            addressing: AddressMode::Immediate,
+            cycles: 2,
+        }
+    );
+    m.insert(
+        0xE4u8,
+        Instruction{
+            operation: Operation::CPX,
+            addressing: AddressMode::ZeroPage,
+            cycles: 3,
+        }
+    );
+    m.insert(
+        0xECu8,
+        Instruction{
+            operation: Operation::CPX,
+            addressing: AddressMode::Absolute,
+            cycles: 4,
+        }
+    );
+    m.insert(
+        0xC0u8,
+        Instruction{
+            operation: Operation::CPY,
+            addressing: AddressMode::Immediate,
+            cycles: 2,
+        }
+    );
+    m.insert(
+        0xC4u8,
+        Instruction{
+            operation: Operation::CPY,
+            addressing: AddressMode::ZeroPage,
+            cycles: 3,
+        }
+    );
+    m.insert(
+        0xCCu8,
+        Instruction{
+            operation: Operation::CPY,
+            addressing: AddressMode::Absolute,
+            cycles: 4,
         }
     );
 
