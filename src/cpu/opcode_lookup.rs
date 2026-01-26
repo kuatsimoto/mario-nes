@@ -48,6 +48,11 @@ pub enum Operation {
     CMP,
     CPX,
     CPY,
+    PHA,
+    PHP,
+    PLA,
+    PLP,
+    NOP,
 }
 
 //AddressMode enum
@@ -143,6 +148,20 @@ pub fn handler_dispatch(cpu: &mut CPU<NesBus>, instruction: &mut Instruction, op
         Operation::CMP | Operation::CPX | Operation::CPY => {
             let result = CPU::compare_operations(cpu, instruction, operand);
             match result {
+                Ok(v) => Ok(v),
+                Err(e) => Err(e),
+            }
+        }
+        Operation::PHA | Operation::PHP | Operation::PLA | Operation::PLP => {
+            let result = CPU::stack_operations(cpu, instruction);
+            match result {
+                Ok(v) => Ok(v),
+                Err(e) => Err(e),
+            }
+        }
+        Operation::NOP => {
+            let result = CPU::nop_operation(cpu, instruction);
+            match result{
                 Ok(v) => Ok(v),
                 Err(e) => Err(e),
             }
@@ -1215,6 +1234,46 @@ pub static OPCODE_LOOKUP: Lazy<HashMap<u8, Instruction>> = Lazy::new(|| {
         Instruction{
             operation: Operation::CPY,
             addressing: AddressMode::Absolute,
+            cycles: 4,
+        }
+    );
+    m.insert(
+        0x48u8,
+        Instruction{
+            operation: Operation::PHA,
+            addressing: AddressMode::Implicit,
+            cycles: 3
+        }
+    );
+    m.insert(
+        0x08u8,
+        Instruction{
+            operation: Operation::PHP,
+            addressing: AddressMode::Implicit,
+            cycles: 3
+        }
+    );
+    m.insert(
+        0x68u8,
+        Instruction{
+            operation: Operation::PLA,
+            addressing: AddressMode::Implicit,
+            cycles: 4
+        }
+    );
+    m.insert(
+        0x28u8,
+        Instruction{
+            operation: Operation::PLP,
+            addressing: AddressMode::Implicit,
+            cycles: 4
+        }
+    );
+    m.insert(
+        0xEAu8,
+        Instruction{
+            operation: Operation::NOP,
+            addressing: AddressMode::Implicit,
             cycles: 4,
         }
     );

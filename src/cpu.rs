@@ -402,6 +402,11 @@ impl<B: CpuBus> CPU<B> {
     }
 
     pub fn set_flag_operation(&mut self, instruction: &Instruction) -> Result<(), &'static str> {
+        match instruction.addressing {
+            AddressMode::Implicit => (),
+            _ => return Err("Invalid address mode")
+        };
+
         match instruction.operation {
             Operation::CLC => self.set_flag(CPU::<B>::CARRY, false),
             Operation::CLD => self.set_flag(CPU::<B>::DECIMAL, false),
@@ -486,17 +491,45 @@ impl<B: CpuBus> CPU<B> {
         Ok(())
     }
 
+    fn set_tranfer_flags(&mut self, value: u8){
+        self.set_flag(CPU::<B>::ZERO, value == 0);
+        self.set_flag(CPU::<B>::NEGATIVE, value & 0x80 != 0);
+    } 
     pub fn transfer_operations(&mut self, instruction: &Instruction) -> Result<(), &'static str>{
+        match instruction.addressing {
+            AddressMode::Implicit => (),
+            _ => return Err("Invalid address mode")
+        };
         
         self.cycles_remaining = instruction.cycles;
 
         match instruction.operation {
-            Operation::TAX =>  self.X = self.A,
-            Operation::TAY => self.Y = self.A,
-            Operation::TSX => self.X = self.SP,
-            Operation::TXA => self.A = self.X,
+            Operation::TAX =>  {
+                let value = self.A;
+                self.X = value;
+                self.set_tranfer_flags(value);
+            },
+            Operation::TAY => {
+                let value = self.A;
+                self.Y = value;
+                self.set_tranfer_flags(value);
+            },
+            Operation::TSX => {
+                let value = self.SP;
+                self.X = value;
+                self.set_tranfer_flags(value);
+            },
+            Operation::TXA => {
+                let value = self.X;
+                self.A = value;
+                self.set_tranfer_flags(value);
+            },
             Operation::TXS => self.SP = self.X,
-            Operation::TYA => self.A = self.Y,
+            Operation::TYA => {
+                let value = self.Y;
+                self.A = value;
+                self.set_tranfer_flags(value);
+            },
             _ => return Err("Invalid operation"),
         };
 
@@ -714,6 +747,44 @@ impl<B: CpuBus> CPU<B> {
         self.set_flag(CPU::<B>::ZERO, register == value);
         self.set_flag(CPU::<B>::NEGATIVE, result & 0x80 !=0);
 
+        Ok(())
+    }
+
+    pub fn stack_operations(&mut self, instruction: &Instruction) -> Result<(), &'static str> {
+        match instruction.addressing {
+            AddressMode::Implicit => (),
+            _ => return Err("Invalid address mode")
+        };
+
+        self.cycles_remaining = instruction.cycles;
+
+        match instruction.operation {
+            Operation::PHA => self.push_to_stack(self.A),
+            Operation::PHP => self.push_to_stack(self.P | CPU::<B>::UNUSED | CPU::<B>::BREAK),
+            Operation::PLA => {
+                let value = self.pull_from_stack();
+                self.A = value;
+                self.set_flag(CPU::<B>::ZERO, value == 0);
+                self.set_flag(CPU::<B>::NEGATIVE, value & 0x80 !=0);
+            },
+            Operation::PLP => self.P = (self.pull_from_stack() | CPU::<B>::UNUSED) & !CPU::<B>::BREAK,
+            _ => return Err("Invalid operation")
+        }
+
+        Ok(())
+    } 
+    
+    pub fn nop_operation(&mut self, instruction: &Instruction) -> Result<(), &'static str> {
+        match instruction.addressing {
+            AddressMode::Implicit => (),
+            _ => return Err("Invalid address mode")
+        };
+
+        self.cycles_remaining = instruction.cycles;
+        match instruction.operation {
+            Operation::NOP => (),
+            _ => return Err("Invalid operation")
+        };
         Ok(())
     }
 }
