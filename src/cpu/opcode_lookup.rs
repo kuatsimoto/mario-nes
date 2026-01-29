@@ -942,7 +942,7 @@ pub static OPCODE_LOOKUP: Lazy<HashMap<u8, Instruction>> = Lazy::new(|| {
         }
     );
     m.insert(
-        0x69u8,
+        0x60u8,
         Instruction{
             operation: Operation::RTS,
             addressing: AddressMode::Implicit,

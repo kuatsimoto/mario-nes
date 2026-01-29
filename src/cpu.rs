@@ -207,7 +207,7 @@ impl<B: CpuBus> CPU<B> {
             AddressMode::Relative => AddressModeResult::Relative{offset: *operand as i8}, 
             AddressMode::Indirect => AddressModeResult::Indirect{pointer: *operand},
             AddressMode::Implicit => AddressModeResult::Implicit,
-            _ => AddressModeResult::Immediate { value: 0x00 }, //Will be changed later for correct error
+            // _ => AddressModeResult::Immediate { value: 0x00 }, //Will be changed later for correct error
                                                                //handling
         }
     }
@@ -405,8 +405,7 @@ impl<B: CpuBus> CPU<B> {
         match instruction.addressing {
             AddressMode::Implicit => (),
             _ => return Err("Invalid address mode")
-        };
-
+        }
         match instruction.operation {
             Operation::CLC => self.set_flag(CPU::<B>::CARRY, false),
             Operation::CLD => self.set_flag(CPU::<B>::DECIMAL, false),
@@ -640,7 +639,7 @@ impl<B: CpuBus> CPU<B> {
                 
                 let result = (value as u16) << 1;
                 self.set_flag(CPU::<B>::CARRY, result & 0x100 != 0);
-                self.set_flag(CPU::<B>::ZERO, result == 0);
+                self.set_flag(CPU::<B>::ZERO, result & 0x00FF == 0);
                 self.set_flag(CPU::<B>::NEGATIVE, result & 0x80 != 0);
 
                 match accumulator {
